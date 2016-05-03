@@ -18,17 +18,17 @@ logger = logging.getLogger(__name__)
 
 # Bases and domain
 x_basis = de.Fourier('x', param.Nx, [0, param.Lx], dealias=3/2)
-y0_basis = de.Fourier('y0', param.Ny, [0, param.Ly], dealias=3/2)
-y1_basis = de.Fourier('y1', param.Ny, [0, param.Ly], dealias=3/2)
-domain = de.Domain([x_basis, y0_basis, y1_basis], grid_dtype=np.float64)
+y0_basis = de.Fourier('y0', param.Ny, [-param.Ly/2, param.Ly/2], dealias=3/2)
+y1_basis = de.Fourier('y1', param.Ny, [-param.Ly/2, param.Ly/2], dealias=3/2)
+domain = de.Domain([x_basis, y0_basis, y1_basis], grid_dtype=np.float64, mesh=param.mesh)
 
 # Reference jet
-# cz = - A * sin(y/2)**2 * tanh((y-pi)/δ)
+# cz = - A * cos(y/2)**2 * tanh(y/δ)
 cz_ref = domain.new_field()
 cz_ref.meta['x']['constant'] = True
 x, y0, y1 = domain.grids()
 # Build as 1D function of y0
-cz_ref['g'] = -param.ref_amp * np.sin(y0/2)**2 * np.tanh((y0-np.pi)/param.ref_width)
+cz_ref['g'] = -param.ref_amp * np.cos(y0/2)**2 * np.tanh(y0/param.ref_width)
 # Diagonalize
 cz_ref = Diag(cz_ref, 'y0', 'y1').evaluate()
 
