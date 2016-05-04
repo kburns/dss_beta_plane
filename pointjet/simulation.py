@@ -74,16 +74,30 @@ cs = solver.state['cs']
 css = solver.state['css']
 
 # Invert cz_ref for cs initial condition
-slices = domain.dist.coeff_layout.slices(scales=1)
-ky0 = reshape_vector(y0_basis.wavenumbers[slices[1]], dim=domain.dim, axis=1)
-ky0_mod = ky0.copy()
-ky0_mod[ky0_mod == 0] = 1
-cs['c'] = - cz_ref['c'] / ky0_mod**2
+ic_problem = de.LBVP(domain, variables=['cs'])
+ic_problem.parameters['cz_ref'] = cz_ref
+ic_problem.add_equation("cs = 0", condition="(nx != 0) or (ny0 != ny1)")
+ic_problem.add_equation("cs = 0", condition="(nx == 0) and (ny0 == ny1) and (ny0 == 0)")
+ic_problem.add_equation("dy0(dy0(cs)) = cz_ref", condition="(nx == 0) and (ny0 == ny1) and (ny0 != 0)")
+ic_solver = ic_problem.build_solver()
+ic_solver.solve()
+cs['c'] = ic_solver.state['cs']['c']
 
 # Locally correlated perturbations
-# css = A * exp(-(x**2 + (2*sin((y1-y0)/2))**2/2)/δ**2)
+# czz = A * exp(-(x**2 + (2*sin((y1-y0)/2))**2/2)/2/δ**2)
 r2 = x**2 + (2*np.sin((y1-y0)/2))**2/2
-css['g'] = param.pert_amp * np.exp(-r2/2/param.pert_width**2)
+czz_ic = domain.new_field()
+czz_ic['g'] = param.pert_amp * np.exp(-r2/2/param.pert_width**2)
+# Invert czz_ic for css initial condition
+ic_problem = de.LBVP(domain, variables=['css'])
+ic_problem.parameters['czz_ic'] = czz_ic
+ic_problem.substitutions['L0(A)'] = "dx(dx(A)) + dy0(dy0(A))"
+ic_problem.substitutions['L1(A)'] = "dx(dx(A)) + dy1(dy1(A))"
+ic_problem.add_equation("css = 0", condition="(nx == 0)")
+ic_problem.add_equation("L1(L0(css)) = czz_ic", condition="(nx != 0)")
+ic_solver = ic_problem.build_solver()
+ic_solver.solve()
+css['c'] = ic_solver.state['css']['c']
 
 # Integration parameters
 solver.stop_sim_time = param.stop_sim_time
