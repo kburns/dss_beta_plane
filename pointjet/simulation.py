@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 # Bases and domain
-x_basis = de.Fourier('x', param.Nx, [0, param.Lx], dealias=3/2)
+x_basis = de.Fourier('x', param.Nx, [-param.Lx/2, param.Lx/2], dealias=3/2)
 y0_basis = de.Fourier('y0', param.Ny, [-param.Ly/2, param.Ly/2], dealias=3/2)
 y1_basis = de.Fourier('y1', param.Ny, [-param.Ly/2, param.Ly/2], dealias=3/2)
 domain = de.Domain([x_basis, y0_basis, y1_basis], grid_dtype=np.float64, mesh=param.mesh)
@@ -80,11 +80,10 @@ ky0_mod = ky0.copy()
 ky0_mod[ky0_mod == 0] = 1
 cs['c'] = - cz_ref['c'] / ky0_mod**2
 
-# Vertical velocity perturbation:
-#  ψ' = A * cos(k*x)
-#  v' = - A * k * sin(k*x) = - V * sin(k*x)
-#  css = A**2 * cos(k*ξ) / 2
-css['g'] = (param.pert_amp)**2 * np.cos(param.pert_k*x) / 2
+# Locally correlated perturbations
+# css = A * exp(-(x**2 + (2*sin((y1-y0)/2))**2/2)/δ**2)
+r2 = x**2 + (2*np.sin((y1-y0)/2))**2/2
+css['g'] = param.pert_amp * np.exp(-r2/2/param.pert_width**2)
 
 # Integration parameters
 solver.stop_sim_time = param.stop_sim_time

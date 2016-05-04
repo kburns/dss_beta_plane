@@ -15,12 +15,10 @@ nu = 1e-3
 ref_amp = 0.6 * 2 * np.pi
 ref_width = 0.05
 
-# Vertical velocity perturbation:
-#  ψ' = A * cos(k*x)
-#  v' = - A * k * sin(k*x) = - V * sin(k*x)
-#  css = A**2 * cos(k*ξ) / 2
-pert_k = 2
-pert_amp = 1e-2 / pert_k
+# Locally correlated perturbations
+# css = A * exp(-(x**2 + (2*sin((y1-y0)/2))**2/2)/δ**2)
+pert_amp = 1e-3
+pert_width = 0.5
 
 # Discretization parameters
 Nx = 64
@@ -29,5 +27,5 @@ dt = 1e-3
 stop_sim_time = 10
 stop_wall_time = np.inf
 stop_iteration = np.inf
-mesh = (4,6)
+mesh = None
 
