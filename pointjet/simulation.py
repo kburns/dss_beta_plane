@@ -40,8 +40,8 @@ problem.parameters['κ'] = param.kappa
 problem.parameters['ν'] = param.nu
 problem.parameters['cz_ref'] = cz_ref
 problem.substitutions['D(A)'] = "Diag(interp(A, x=0), 'y0', 'y1')"
-problem.substitutions['P0(A)'] = "interp(A, y1=0)"
-problem.substitutions['P1(A)'] = "interp(A, y0=0)"
+problem.substitutions['P0(A)'] = "interp(A, y1='left')"
+problem.substitutions['P1(A)'] = "interp(A, y0='left')"
 problem.substitutions['L0(A)'] = "dx(dx(A)) + dy0(dy0(A))"
 problem.substitutions['L1(A)'] = "dx(dx(A)) + dy1(dy1(A))"
 problem.substitutions['cz'] = "dy0(dy0(cs))"
