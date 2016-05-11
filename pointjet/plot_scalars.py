@@ -19,8 +19,8 @@ def main(filename):
 
     # Plot settings
     tasks = ['KE', 'EN']
-    figsize = (8, 4)
-    dpi = 200
+    figsize = (12, 8)
+    dpi = 100
 
     # Plot integrals
     fig = plt.figure(figsize=figsize)
@@ -32,9 +32,9 @@ def main(filename):
             data = data / data[0]
             plt.plot(time, data, label=task)
             print('Final %s: %.8f' %(task, data[-1]))
-        #plt.ylim(0.9, 1.1)
+        plt.ylim(0.8, 1.2)
         plt.xlabel('time')
-        plt.legend(loc="lower right")
+        plt.legend(loc="upper right")
         # Save figure
         fig.savefig('integrals.png', dpi=dpi)
     fig.clear()

@@ -2,12 +2,11 @@
 
 import numpy as np
 np.seterr(all='raise')
-from mpi4py import MPI
 import time
+import pathlib
 
 from dedalus import public as de
 from dedalus.tools.array import reshape_vector
-
 import parameters as param
 import diagonal
 de.operators.parseables['Diag'] = Diag = diagonal.FourierDiagonal
@@ -23,12 +22,11 @@ y1_basis = de.Fourier('y1', param.Ny, [-param.Ly/2, param.Ly/2], dealias=3/2)
 domain = de.Domain([x_basis, y0_basis, y1_basis], grid_dtype=np.float64, mesh=param.mesh)
 
 # Reference jet
-# cz = - A * cos(y/2)**2 * tanh(y/δ)
 cz_ref = domain.new_field()
 cz_ref.meta['x']['constant'] = True
 x, y0, y1 = domain.grids()
 # Build as 1D function of y0
-cz_ref['g'] = -param.ref_amp * np.cos(y0/2)**2 * np.tanh(y0/param.ref_width)
+cz_ref['g'] = -param.ref_amp * np.cos(y0*np.pi/param.Ly)**2 * np.tanh(y0/param.ref_width)
 # Diagonalize
 cz_ref = Diag(cz_ref, 'y0', 'y1').evaluate()
 
@@ -67,49 +65,50 @@ problem.add_equation("dt(czz) + β*dx(csz - czs) + 2*κ*czz - ν*L0(czz) - ν*L1
 
 # Solver
 solver = problem.build_solver(de.timesteppers.RK222)
-logger.info('Solver built')
-
-# Initial conditions
-cs = solver.state['cs']
-css = solver.state['css']
-
-# Invert cz_ref for cs initial condition
-ic_problem = de.LBVP(domain, variables=['cs'])
-ic_problem.parameters['cz_ref'] = cz_ref
-ic_problem.add_equation("cs = 0", condition="(nx != 0) or (ny0 != ny1)")
-ic_problem.add_equation("cs = 0", condition="(nx == 0) and (ny0 == ny1) and (ny0 == 0)")
-ic_problem.add_equation("dy0(dy0(cs)) = cz_ref", condition="(nx == 0) and (ny0 == ny1) and (ny0 != 0)")
-ic_solver = ic_problem.build_solver()
-ic_solver.solve()
-cs['c'] = ic_solver.state['cs']['c']
-
-# Locally correlated perturbations
-# czz = A * exp(-(x**2 + (2*sin((y1-y0)/2))**2/2)/2/δ**2)
-r2 = x**2 + (2*np.sin((y1-y0)/2))**2/2
-czz_ic = domain.new_field()
-czz_ic['g'] = param.pert_amp * np.exp(-r2/2/param.pert_width**2)
-# Invert czz_ic for css initial condition
-ic_problem = de.LBVP(domain, variables=['css'])
-ic_problem.parameters['czz_ic'] = czz_ic
-ic_problem.substitutions['L0(A)'] = "dx(dx(A)) + dy0(dy0(A))"
-ic_problem.substitutions['L1(A)'] = "dx(dx(A)) + dy1(dy1(A))"
-ic_problem.add_equation("css = 0", condition="(nx == 0)")
-ic_problem.add_equation("L1(L0(css)) = czz_ic", condition="(nx != 0)")
-ic_solver = ic_problem.build_solver()
-ic_solver.solve()
-css['c'] = ic_solver.state['css']['c']
-
-# Integration parameters
 solver.stop_sim_time = param.stop_sim_time
 solver.stop_wall_time = param.stop_wall_time
 solver.stop_iteration = param.stop_iteration
+
+# Initial conditions
+if pathlib.Path('restart.h5').exists():
+    solver.load_state('restart.h5', -1)
+else:
+    cs = solver.state['cs']
+    css = solver.state['css']
+
+    # Invert cz_ref for cs initial condition
+    ic_problem = de.LBVP(domain, variables=['cs'])
+    ic_problem.parameters['cz_ref'] = cz_ref
+    ic_problem.add_equation("cs = 0", condition="(nx != 0) or (ny0 != ny1)")
+    ic_problem.add_equation("cs = 0", condition="(nx == 0) and (ny0 == ny1) and (ny0 == 0)")
+    ic_problem.add_equation("dy0(dy0(cs)) = cz_ref", condition="(nx == 0) and (ny0 == ny1) and (ny0 != 0)")
+    ic_solver = ic_problem.build_solver()
+    ic_solver.solve()
+    cs['c'] = ic_solver.state['cs']['c']
+
+    # Locally correlated perturbations
+    r2 = x**2 + (param.Ly/np.pi*np.sin((y1-y0)*np.pi/param.Ly))**2/2
+    czz_ic = domain.new_field()
+    czz_ic['g'] = param.pert_amp * np.exp(-r2/2/param.pert_width**2)
+    # Invert czz_ic for css initial condition
+    ic_problem = de.LBVP(domain, variables=['css'])
+    ic_problem.parameters['czz_ic'] = czz_ic
+    ic_problem.substitutions['L0(A)'] = "dx(dx(A)) + dy0(dy0(A))"
+    ic_problem.substitutions['L1(A)'] = "dx(dx(A)) + dy1(dy1(A))"
+    ic_problem.add_equation("css = 0", condition="(nx == 0)")
+    ic_problem.add_equation("L1(L0(css)) = czz_ic", condition="(nx != 0)")
+    ic_solver = ic_problem.build_solver()
+    ic_solver.solve()
+    css['c'] = ic_solver.state['css']['c']
 
 # Analysis
 an1 = solver.evaluator.add_file_handler('data_checkpoints', wall_dt=20*60, max_writes=1)
 an1.add_system(solver.state)
 
 an2 = solver.evaluator.add_file_handler('data_snapshots', iter=10, max_writes=10)
-an2.add_task("interp(czz, y1='center')")
+an2.add_task("interp(czz, y1=%.3f)" %(0.0*param.Ly), scales=2)
+an2.add_task("interp(czz, y1=%.3f)" %(0.1*param.Ly), scales=2)
+an2.add_task("interp(czz, y1=%.3f)" %(0.2*param.Ly), scales=2)
 
 an3 = solver.evaluator.add_file_handler('data_profiles', iter=10, max_writes=10)
 an3.add_task("P1(cz)", name='cz')
