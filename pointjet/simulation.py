@@ -102,20 +102,20 @@ else:
     css['c'] = ic_solver.state['css']['c']
 
 # Analysis
-an1 = solver.evaluator.add_file_handler('data_checkpoints', wall_dt=20*60, max_writes=1)
+an1 = solver.evaluator.add_file_handler('data_checkpoints', sim_dt=param.checkpoints_sim_dt, max_writes=1)
 an1.add_system(solver.state)
 
-an2 = solver.evaluator.add_file_handler('data_snapshots', iter=10, max_writes=10)
+an2 = solver.evaluator.add_file_handler('data_snapshots', iter=param.snapshots_iter, max_writes=10)
 an2.add_task("interp(czz, y1=%.3f)" %(0.0*param.Ly), scales=2)
 an2.add_task("interp(czz, y1=%.3f)" %(0.1*param.Ly), scales=2)
 an2.add_task("interp(czz, y1=%.3f)" %(0.2*param.Ly), scales=2)
 
-an3 = solver.evaluator.add_file_handler('data_profiles', iter=10, max_writes=10)
+an3 = solver.evaluator.add_file_handler('data_profiles', iter=param.profiles_iter, max_writes=10)
 an3.add_task("P1(cz)", name='cz')
 an3.add_task("P1(cs)", name='cs')
 an3.add_task("-dy1(P1(cs))", name='cu')
 
-an4 = solver.evaluator.add_file_handler('data_scalars', iter=10, max_writes=10)
+an4 = solver.evaluator.add_file_handler('data_scalars', iter=param.scalars_iter, max_writes=10)
 an4.add_task("-(Lx/2) * integ(P0(cz)*P0(cs) + P0(D(czs)), 'y0')", name='KE')
 an4.add_task(" (Lx/2) * integ(P0(cz)*P0(cz) + P0(D(czz)), 'y0')", name='EN')
 
