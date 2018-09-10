@@ -170,6 +170,3 @@ class SinCosDiagonal(Operator, FutureField):
         exp_slices = [slice(None) for i in range(dim)]
         exp_slices[axis0] = None
         out.data[:] = arg.data[tuple(arg_slices)][tuple(exp_slices)]
-        print(arg.data)
-        print()
-        print(out.data)

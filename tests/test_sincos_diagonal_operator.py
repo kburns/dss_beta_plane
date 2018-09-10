@@ -40,9 +40,6 @@ def general_test(test_func, py0, py1):
     h['g'] = test_func(x, y1, y1)
     g = Diag(f, 'y0', 'y1').evaluate()
 
-    print(g['c'])
-    print()
-    print(h['c'])
     return np.allclose(g['c'], h['c'])
 
 
