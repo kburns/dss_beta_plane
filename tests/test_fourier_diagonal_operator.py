@@ -33,8 +33,8 @@ def general_test(test_func):
     f = domain.new_field()
     h = domain.new_field()
     f['g'] = test_func(x, y0, y1)
-    h['g'] = test_func(0, y0+y1-a, y0+y1-a)
-    g = Diag(interp(f, x=0), 'y0', 'y1').evaluate()
+    h['g'] = test_func(x, y0+y1-a, y0+y1-a)
+    g = Diag(f, 'y0', 'y1').evaluate()
 
     return np.allclose(g['c'], h['c'])
 
